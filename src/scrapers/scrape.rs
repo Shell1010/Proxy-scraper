@@ -1,6 +1,8 @@
 use regex::Regex;
 use reqwest::Client;
 use tokio::net::{TcpStream};
+use tokio::fs::OpenOptions;
+use tokio::io::AsyncWriteExt;
 
 #[derive(Clone, Copy)]
 pub struct Scraper {}
@@ -38,14 +40,20 @@ impl Scraper {
         ips
     }
 
-    pub async fn check_proxy(&self, addr: String, port: String) -> Option<String> {
+    pub async fn check_proxy(&self, addr: String, port: String, writer: &str) {
+        let mut writer = OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(writer)
+            .await
+            .unwrap();
         let other_addr = addr.clone();
-        match tokio::time::timeout(tokio::time::Duration::from_millis(500), TcpStream::connect((addr, port.parse::<u16>().unwrap()))).await {
-            Ok(x) => match x {
-                Ok(_) => Some(format!("{}:{}", other_addr, port)),
-                Err(_) => None,
-            },
-            Err(_) => None,
+
+        if let Ok(x) = tokio::time::timeout(tokio::time::Duration::from_millis(500), TcpStream::connect((addr, port.parse::<u16>().unwrap()))).await {
+           if x.is_ok() {
+            println!("Valid: {other_addr}:{port}");
+            writer.write_all(format!("{}:{}\n", other_addr, port).as_bytes()).await.unwrap();
+        }
         }
     }
 }

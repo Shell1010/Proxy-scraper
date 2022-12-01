@@ -2,8 +2,6 @@ mod scrapers;
 use futures::stream::futures_unordered::FuturesUnordered;
 use futures::StreamExt;
 use scrapers::Scraper;
-use tokio::fs::OpenOptions;
-use tokio::io::AsyncWriteExt;
 use tokio::main;
 #[main]
 async fn main() {
@@ -35,13 +33,6 @@ async fn http_scrape() {
         texts.push(text);
     }
 
-    let mut https = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("http.txt")
-        .await
-        .unwrap();
-
 
 
     let mut futs = FuturesUnordered::new();
@@ -58,23 +49,15 @@ async fn http_scrape() {
 
 
     let mut futs = FuturesUnordered::new();
-    let mut valid_proxies : Vec<String> = vec![];
     let mut stuff = stuff.iter().peekable();
     while let Some(proxy) = stuff.next() {
         let items: Vec<&str> = proxy.split(':').collect();
-        futs.push(scraper.check_proxy(items[0].to_string(), items[1].to_string()));
-        while let Some(valid) = futs.next().await {
-            if let Some(valid) = valid {
-                println!("Valid: {valid}");
-                valid_proxies.push(valid);
-            }
-        }
+        futs.push(scraper.check_proxy(items[0].to_string(), items[1].to_string(), "http.txt"));
+        while (futs.next().await).is_some() {}
         if stuff.peek().is_none() { break }
     }
 
-    for proxy in valid_proxies {
-        https.write_all(format!("{proxy}\n").as_bytes()).await.unwrap();
-    }
+
 }
 
 async fn socks_scrape() {
@@ -94,12 +77,6 @@ async fn socks_scrape() {
 
     let socks_urls = socks_urls.map(|x| x.to_string());
 
-    let mut socks = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("socks.txt")
-        .await
-        .unwrap();
 
     let mut texts = vec![];
     let mut futs = FuturesUnordered::new();
@@ -125,22 +102,15 @@ async fn socks_scrape() {
     }
 
     let mut futs = FuturesUnordered::new();
-    let mut valid_proxies : Vec<String> = vec![];
+
     let mut stuff = stuff.iter().peekable();
     while let Some(proxy) = stuff.next() {
         let items: Vec<&str> = proxy.split(':').collect();
-        futs.push(scraper.check_proxy(items[0].to_string(), items[1].to_string()));
-        while let Some(valid) = futs.next().await {
-            if let Some(valid) = valid {
-                println!("Valid: {valid}");
-                valid_proxies.push(valid);
-            }
-        }
+        futs.push(scraper.check_proxy(items[0].to_string(), items[1].to_string(), "socks.txt"));
+        while (futs.next().await).is_some() {}
         if stuff.peek().is_none() { break }
     }
 
-    for proxy in valid_proxies {
-        socks.write_all(format!("{proxy}\n").as_bytes()).await.unwrap();
-    }
+
 
 }
