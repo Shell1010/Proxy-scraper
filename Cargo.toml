@@ -1,3 +1,4 @@
+cargo-features = ["profile-rustflags"]
 [package]
 name = "proxy-scraper"
 version = "0.1.0"
@@ -10,3 +11,8 @@ futures = "0.3.25"
 regex = { version = "1.7.0", features = ["pattern"] }
 reqwest = { version = "0.11.12", features = ["json"] }
 tokio = { version = "1.21.2", features = ["full"] }
+
+[profile.release]
+opt-level = 3
+lto = true
+rustflags = ["-Ctarget-cpu=native"]
